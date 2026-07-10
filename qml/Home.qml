@@ -77,6 +77,14 @@ Window {
                 }
             }
 
+            onClientConnected: {
+                mainWindow.hide()
+            }
+
+            onClientDisconnected: {
+                mainWindow.show()
+            }
+
             onLastErrorChanged: {
                 if (lastError !== "") {
                     globalToast.show("Error: " + lastError)

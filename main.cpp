@@ -2,9 +2,17 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 
+#include <QSharedMemory>
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    // Ngăn chặn mở nhiều cửa sổ ứng dụng (Single instance protection)
+    QSharedMemory sharedMemory("LR_02_SingleInstanceSharedMemoryKey");
+    if (!sharedMemory.create(1)) {
+        return 0; // Đã có phiên bản chạy trước đó, thoát ngay
+    }
 
     QQuickStyle::setStyle("Basic");
 
