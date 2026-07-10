@@ -1,0 +1,66 @@
+#pragma once
+
+#include <QObject>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QHash>
+#include <QTimer>
+#include <QImage>
+
+#include "PacketStream.h"
+#include "Protocol.h"
+
+class RemoteServer : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit RemoteServer(QObject *parent = nullptr);
+
+    bool start(quint16 port);
+    void stop();
+
+    bool isRunning() const;
+
+    void setPassword(const QString &password);
+
+signals:
+    void clientConnected(QTcpSocket *socket);
+    void clientDisconnected(QTcpSocket *socket);
+
+private slots:
+    void onNewConnection();
+    void onDisconnected();
+    void captureAndBroadcast();
+
+private:
+    void onPacketReceived(QTcpSocket *socket, Packet packet);
+
+    void sendAuthSuccess(QTcpSocket *socket);
+    void sendAuthFailed(QTcpSocket *socket);
+    void sendScreenFrame(QTcpSocket *socket, const QByteArray &framePayload);
+
+    QByteArray compressFrame(const QImage &image, Protocol::CompressionType type);
+
+private:
+    QTcpServer m_server;
+
+    QList<QTcpSocket*> m_clients;
+
+    // socket đã xác thực hay chưa
+    QHash<QTcpSocket*, bool> m_authenticated;
+
+    // PacketStream for each socket
+    QHash<QTcpSocket*, PacketStream*> m_streams;
+
+    // Preferred compression per client
+    QHash<QTcpSocket*, Protocol::CompressionType> m_clientCompression;
+
+    QString m_password;
+
+    // Screen capture timer
+    QTimer m_captureTimer;
+
+    // Previous frame for diff detection
+    QImage m_previousFrame;
+};
