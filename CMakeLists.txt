@@ -80,6 +80,12 @@ target_link_libraries(appLR_02
     Qt6::QuickEffects
 )
 
+if (UNIX AND NOT APPLE)
+    find_package(X11 REQUIRED)
+    target_link_libraries(appLR_02 PRIVATE ${X11_LIBRARIES} ${X11_Xtst_LIB})
+    target_include_directories(appLR_02 PRIVATE ${X11_INCLUDE_DIR})
+endif()
+
 install(TARGETS appLR_02
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

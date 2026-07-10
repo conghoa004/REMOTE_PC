@@ -216,3 +216,33 @@ void ConnectionManager::setLosslessQuality(bool lossless)
 
     m_client.setLosslessQuality(lossless);
 }
+
+void ConnectionManager::sendMouseMove(int x, int y)
+{
+    m_client.sendMouseMove(x, y);
+}
+
+void ConnectionManager::sendMousePress(int button, int x, int y)
+{
+    m_client.sendMousePress(button, x, y);
+}
+
+void ConnectionManager::sendMouseRelease(int button, int x, int y)
+{
+    m_client.sendMouseRelease(button, x, y);
+}
+
+void ConnectionManager::sendMouseWheel(int delta)
+{
+    m_client.sendMouseWheel(delta);
+}
+
+void ConnectionManager::sendKeyPress(int key)
+{
+    m_client.sendKeyPress(key);
+}
+
+void ConnectionManager::sendKeyRelease(int key)
+{
+    m_client.sendKeyRelease(key);
+}

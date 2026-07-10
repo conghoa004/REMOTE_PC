@@ -228,6 +228,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             color: "#08090c"
+            focus: true
 
             // ScreenRenderer hiển thị khung hình từ host
             ScreenRenderer {
@@ -235,6 +236,52 @@ ApplicationWindow {
                 anchors.fill: parent
                 anchors.margins: 4
                 visible: true
+            }
+
+            // MouseArea bắt sự kiện chuột
+            MouseArea {
+                id: inputArea
+                anchors.fill: remoteScreen
+                hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                cursorShape: Qt.ArrowCursor
+
+                onPositionChanged: function(mouse) {
+                    if (!connection) return
+                    var p = remoteScreen.mapToSource(Qt.point(mouse.x, mouse.y))
+                    connection.sendMouseMove(Math.round(p.x), Math.round(p.y))
+                }
+
+                onPressed: function(mouse) {
+                    screenArea.forceActiveFocus()
+                    if (!connection) return
+                    var p = remoteScreen.mapToSource(Qt.point(mouse.x, mouse.y))
+                    connection.sendMousePress(mouse.button, Math.round(p.x), Math.round(p.y))
+                }
+
+                onReleased: function(mouse) {
+                    if (!connection) return
+                    var p = remoteScreen.mapToSource(Qt.point(mouse.x, mouse.y))
+                    connection.sendMouseRelease(mouse.button, Math.round(p.x), Math.round(p.y))
+                }
+
+                onWheel: function(wheel) {
+                    if (!connection) return
+                    connection.sendMouseWheel(wheel.angleDelta.y)
+                }
+            }
+
+            // Keyboard handlers
+            Keys.onPressed: function(event) {
+                if (!connection) return
+                connection.sendKeyPress(event.key)
+                event.accepted = true
+            }
+
+            Keys.onReleased: function(event) {
+                if (!connection) return
+                connection.sendKeyRelease(event.key)
+                event.accepted = true
             }
 
             // Placeholder khi chưa có khung hình

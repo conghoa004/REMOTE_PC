@@ -10,12 +10,17 @@
 #include "PacketStream.h"
 #include "Protocol.h"
 
+#ifdef Q_OS_LINUX
+struct _XDisplay; // Forward declaration to avoid including X11 headers in the header
+#endif
+
 class RemoteServer : public QObject
 {
     Q_OBJECT
 
 public:
     explicit RemoteServer(QObject *parent = nullptr);
+    ~RemoteServer();
 
     bool start(quint16 port);
     void stop();
@@ -42,6 +47,14 @@ private:
 
     QByteArray compressFrame(const QImage &image, Protocol::CompressionType type);
 
+    // Input simulation helpers
+    void simulateMouseMove(int x, int y);
+    void simulateMousePress(int button, int x, int y);
+    void simulateMouseRelease(int button, int x, int y);
+    void simulateMouseWheel(int delta);
+    void simulateKeyPress(int qtKey);
+    void simulateKeyRelease(int qtKey);
+
 private:
     QTcpServer m_server;
 
@@ -63,4 +76,8 @@ private:
 
     // Previous frame for diff detection
     QImage m_previousFrame;
+
+#ifdef Q_OS_LINUX
+    _XDisplay *m_display = nullptr;
+#endif
 };

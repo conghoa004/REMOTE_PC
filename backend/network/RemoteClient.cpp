@@ -23,6 +23,9 @@ RemoteClient::RemoteClient(QObject *parent)
             {
                 emit errorOccurred(m_socket.errorString());
             });
+
+    m_mouseThrottleTimer.setInterval(12); // ~80 Hz limit for mouse moves
+    connect(&m_mouseThrottleTimer, &QTimer::timeout, this, &RemoteClient::sendPendingMouseMove);
 }
 
 void RemoteClient::connectToHost(const QString &ip,
@@ -62,6 +65,7 @@ void RemoteClient::onConnected()
         m_stream->deleteLater();
     }
 
+    m_socket.setSocketOption(QAbstractSocket::LowDelayOption, 1);
     m_stream = new PacketStream(&m_socket, this);
 
     connect(m_stream,
@@ -170,4 +174,102 @@ void RemoteClient::onPacketReceived(Packet packet)
     default:
         break;
     }
+}
+
+void RemoteClient::sendMouseMove(int x, int y)
+{
+    m_pendingMouseMove = QPoint(x, y);
+    m_hasPendingMouseMove = true;
+
+    if (!m_mouseThrottleTimer.isActive()) {
+        sendPendingMouseMove();
+        m_mouseThrottleTimer.start();
+    }
+}
+
+void RemoteClient::sendMousePress(int button, int x, int y)
+{
+    if (!m_stream)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<quint32>(button) << static_cast<qint32>(x) << static_cast<qint32>(y);
+
+    m_stream->send(Protocol::PacketType::MousePress, payload);
+}
+
+void RemoteClient::sendMouseRelease(int button, int x, int y)
+{
+    if (!m_stream)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<quint32>(button) << static_cast<qint32>(x) << static_cast<qint32>(y);
+
+    m_stream->send(Protocol::PacketType::MouseRelease, payload);
+}
+
+void RemoteClient::sendMouseWheel(int delta)
+{
+    if (!m_stream)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<qint32>(delta);
+
+    m_stream->send(Protocol::PacketType::MouseWheel, payload);
+}
+
+void RemoteClient::sendKeyPress(int key)
+{
+    if (!m_stream)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<qint32>(key);
+
+    m_stream->send(Protocol::PacketType::KeyPress, payload);
+}
+
+void RemoteClient::sendKeyRelease(int key)
+{
+    if (!m_stream)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<qint32>(key);
+
+    m_stream->send(Protocol::PacketType::KeyRelease, payload);
+}
+
+void RemoteClient::sendPendingMouseMove()
+{
+    if (!m_stream) {
+        m_mouseThrottleTimer.stop();
+        return;
+    }
+
+    if (!m_hasPendingMouseMove) {
+        m_mouseThrottleTimer.stop();
+        return;
+    }
+
+    m_hasPendingMouseMove = false;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<qint32>(m_pendingMouseMove.x()) << static_cast<qint32>(m_pendingMouseMove.y());
+
+    m_stream->send(Protocol::PacketType::MouseMove, payload);
 }

@@ -14,6 +14,7 @@ public:
     explicit ScreenRenderer(QQuickItem *parent = nullptr);
 
     Q_INVOKABLE void setImage(const QImage &image);
+    Q_INVOKABLE QPointF mapToSource(const QPointF &localPoint) const;
 
     void paint(QPainter *painter) override;
 

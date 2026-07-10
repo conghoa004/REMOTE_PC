@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QImage>
+#include <QTimer>
+#include <QPoint>
 
 #include "Protocol.h"
 #include "PacketStream.h"
@@ -24,6 +26,13 @@ public:
 
     void setLosslessQuality(bool lossless);
 
+    void sendMouseMove(int x, int y);
+    void sendMousePress(int button, int x, int y);
+    void sendMouseRelease(int button, int x, int y);
+    void sendMouseWheel(int delta);
+    void sendKeyPress(int key);
+    void sendKeyRelease(int key);
+
 signals:
     void connected();
     void disconnected();
@@ -43,10 +52,16 @@ private:
     void sendAuthentication();
     void sendSettingsUpdate();
     void onPacketReceived(Packet packet);
+    void sendPendingMouseMove();
 
     QTcpSocket m_socket;
     PacketStream *m_stream = nullptr;
 
     QString m_password;
     bool m_losslessQuality = false;
+
+    // Mouse move throttling
+    QTimer m_mouseThrottleTimer;
+    QPoint m_pendingMouseMove;
+    bool m_hasPendingMouseMove = false;
 };

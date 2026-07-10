@@ -60,6 +60,13 @@ public:
 
     Q_INVOKABLE void generatePassword();
 
+    Q_INVOKABLE void sendMouseMove(int x, int y);
+    Q_INVOKABLE void sendMousePress(int button, int x, int y);
+    Q_INVOKABLE void sendMouseRelease(int button, int x, int y);
+    Q_INVOKABLE void sendMouseWheel(int delta);
+    Q_INVOKABLE void sendKeyPress(int key);
+    Q_INVOKABLE void sendKeyRelease(int key);
+
 signals:
     void lastErrorChanged();
 
