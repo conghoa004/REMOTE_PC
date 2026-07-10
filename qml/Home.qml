@@ -415,6 +415,9 @@ Window {
                                     border.color: targetPasswordInput.activeFocus ? "#0A84FF" : "transparent"
                                     border.width: 1
 
+                                    // Khai báo ở đây, ngoài TextField để binding không bị đóng băng trên Linux
+                                    property bool showPassword: false
+
                                     TextField {
                                         id: targetPasswordInput
                                         anchors.left: parent.left
@@ -428,28 +431,34 @@ Window {
                                         color: "#FFFFFF"
                                         font.pixelSize: 14
                                         font.family: "Consolas"
-                                        echoMode: showPassword ? TextInput.Normal : TextInput.Password
+                                        echoMode: passwordInputWrapper.showPassword ? TextInput.Normal : TextInput.Password
                                         verticalAlignment: TextInput.AlignVCenter
                                         background: Item {}
-
-                                        property bool showPassword: false
                                     }
 
-                                    ItemDelegate {
+                                    Rectangle {
                                         id: eyeButton
                                         anchors.right: parent.right
                                         anchors.verticalCenter: parent.verticalCenter
                                         anchors.rightMargin: 12
-                                        width: 20
-                                        height: 20
-                                        background: Item {}
-                                        onClicked: targetPasswordInput.showPassword = !targetPasswordInput.showPassword
+                                        width: 24
+                                        height: 24
+                                        color: "transparent"
+                                        radius: 4
+
+                                        MouseArea {
+                                            id: eyeMouseArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: passwordInputWrapper.showPassword = !passwordInputWrapper.showPassword
+                                        }
 
                                         Text {
                                             anchors.centerIn: parent
                                             font.family: homeIconFont.name
-                                            text: targetPasswordInput.showPassword ? "\uf070" : "\uf06e"
-                                            color: eyeButton.hovered ? "#FFFFFF" : "#71717A"
+                                            text: passwordInputWrapper.showPassword ? "\uf070" : "\uf06e"
+                                            color: eyeMouseArea.containsMouse ? "#FFFFFF" : "#71717A"
                                             font.pixelSize: 14
                                         }
                                     }

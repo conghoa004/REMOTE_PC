@@ -2,9 +2,137 @@
 
 #include <QRandomGenerator>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+
+static ConnectionManager* s_instance = nullptr;
+static HHOOK s_keyboardHook = NULL;
+
+static int vkToQtKey(WORD vk)
+{
+    if (vk >= 'A' && vk <= 'Z')
+        return Qt::Key_A + (vk - 'A');
+    if (vk >= '0' && vk <= '9')
+        return Qt::Key_0 + (vk - '0');
+    if (vk >= VK_F1 && vk <= VK_F12)
+        return Qt::Key_F1 + (vk - VK_F1);
+
+    switch (vk) {
+    case VK_ESCAPE:    return Qt::Key_Escape;
+    case VK_TAB:       return Qt::Key_Tab;
+    case VK_BACK:      return Qt::Key_Backspace;
+    case VK_RETURN:    return Qt::Key_Return;
+    case VK_INSERT:    return Qt::Key_Insert;
+    case VK_DELETE:    return Qt::Key_Delete;
+    case VK_PAUSE:     return Qt::Key_Pause;
+    case VK_SNAPSHOT:  return Qt::Key_Print;
+    case VK_HOME:      return Qt::Key_Home;
+    case VK_END:       return Qt::Key_End;
+    case VK_LEFT:      return Qt::Key_Left;
+    case VK_UP:        return Qt::Key_Up;
+    case VK_RIGHT:     return Qt::Key_Right;
+    case VK_DOWN:      return Qt::Key_Down;
+    case VK_PRIOR:     return Qt::Key_PageUp;
+    case VK_NEXT:      return Qt::Key_PageDown;
+    case VK_SHIFT:
+    case VK_LSHIFT:
+    case VK_RSHIFT:    return Qt::Key_Shift;
+    case VK_CONTROL:
+    case VK_LCONTROL:
+    case VK_RCONTROL:  return Qt::Key_Control;
+    case VK_MENU:
+    case VK_LMENU:
+    case VK_RMENU:     return Qt::Key_Alt;
+    case VK_CAPITAL:   return Qt::Key_CapsLock;
+    case VK_NUMLOCK:   return Qt::Key_NumLock;
+    case VK_SCROLL:    return Qt::Key_ScrollLock;
+    case VK_SPACE:     return Qt::Key_Space;
+    case VK_LWIN:
+    case VK_RWIN:      return Qt::Key_Meta;
+    case VK_APPS:      return Qt::Key_Menu;
+    case VK_OEM_MINUS: return Qt::Key_Minus;
+    case VK_OEM_PLUS:  return Qt::Key_Equal;
+    case VK_OEM_COMMA: return Qt::Key_Comma;
+    case VK_OEM_PERIOD: return Qt::Key_Period;
+    case VK_OEM_2:      return Qt::Key_Slash;
+    case VK_OEM_5:      return Qt::Key_Backslash;
+    case VK_OEM_1:      return Qt::Key_Semicolon;
+    case VK_OEM_7:      return Qt::Key_Apostrophe;
+    case VK_OEM_4:      return Qt::Key_BracketLeft;
+    case VK_OEM_6:      return Qt::Key_BracketRight;
+    case VK_OEM_3:      return Qt::Key_QuoteLeft;
+    default:           return 0;
+    }
+}
+
+static LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if (nCode == HC_ACTION && s_instance != nullptr)
+    {
+        HWND activeWnd = GetForegroundWindow();
+        DWORD activeProcId = 0;
+        GetWindowThreadProcessId(activeWnd, &activeProcId);
+        
+        if (activeProcId == GetCurrentProcessId())
+        {
+            wchar_t windowTitle[256] = {0};
+            if (GetWindowTextW(activeWnd, windowTitle, 256) > 0)
+            {
+                if (wcscmp(windowTitle, L"Remote Desktop Connection") == 0)
+                {
+                    KBDLLHOOKSTRUCT* pKey = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+                    int qtKey = vkToQtKey(static_cast<WORD>(pKey->vkCode));
+                    
+                    if (qtKey != 0)
+                    {
+                        if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN)
+                        {
+                            s_instance->sendKeyPress(qtKey);
+                        }
+                        else if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP)
+                        {
+                            s_instance->sendKeyRelease(qtKey);
+                        }
+                    }
+                    
+                    // Consume the key so that local OS and local hooks (like UniKey) don't receive it
+                    return 1;
+                }
+            }
+        }
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+static void installKeyboardHook()
+{
+    if (s_keyboardHook == NULL)
+    {
+        s_keyboardHook = SetWindowsHookEx(
+            WH_KEYBOARD_LL,
+            LowLevelKeyboardProc,
+            GetModuleHandle(NULL),
+            0
+        );
+    }
+}
+
+static void uninstallKeyboardHook()
+{
+    if (s_keyboardHook != NULL)
+    {
+        UnhookWindowsHookEx(s_keyboardHook);
+        s_keyboardHook = NULL;
+    }
+}
+#endif
+
 ConnectionManager::ConnectionManager(QObject *parent)
     : QObject(parent)
 {
+#ifdef Q_OS_WIN
+    s_instance = this;
+#endif
 
     connect(&m_server,
             &RemoteServer::clientConnected,
@@ -80,6 +208,17 @@ ConnectionManager::ConnectionManager(QObject *parent)
             });
 }
 
+ConnectionManager::~ConnectionManager()
+{
+#ifdef Q_OS_WIN
+    uninstallKeyboardHook();
+    if (s_instance == this)
+    {
+        s_instance = nullptr;
+    }
+#endif
+}
+
 bool ConnectionManager::hosting() const
 {
     return m_hosting;
@@ -126,6 +265,17 @@ void ConnectionManager::setState(ConnectionState state)
         return;
 
     m_state = state;
+
+#ifdef Q_OS_WIN
+    if (m_state == ConnectionState::Connected)
+    {
+        installKeyboardHook();
+    }
+    else
+    {
+        uninstallKeyboardHook();
+    }
+#endif
 
     emit stateChanged();
 }

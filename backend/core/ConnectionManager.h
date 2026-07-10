@@ -26,6 +26,7 @@ class ConnectionManager : public QObject
 
 public:
     explicit ConnectionManager(QObject *parent = nullptr);
+    ~ConnectionManager() override;
 
     enum class ConnectionState
     {
