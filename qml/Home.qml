@@ -20,92 +20,97 @@ Window {
     // Quản lý cửa sổ điều khiển Remote
     property var controlWindow: null
 
-    // Khai báo Toast
+    // Định nghĩa các tín hiệu (Signals) ở cấp độ Window
+    signal connectRequested(string targetIp, string password)
+    signal refreshCredentialsRequested()
+    signal hostStateChanged(bool enabled)
+
+    // Khai báo Toast toàn cục
     Toast {
         id: globalToast
+        z: 999 // Đảm bảo luôn hiển thị trên cùng
     }
 
+    // Khai báo các component backend (Đặt ngoài ScrollView để quản lý tốt hơn)
+    NetworkManager {
+        id: network
+    }
+
+    ConnectionManager {
+        id: connection
+
+        onStateChanged: {
+            console.log("Connection State Changed:", state)
+            if (state === ConnectionManager.Connected) {
+                var component = Qt.createComponent("Control.qml")
+                if (component.status === Component.Ready) {
+                    mainWindow.controlWindow = component.createObject(mainWindow, { "connection": connection })
+                    mainWindow.controlWindow.closing.connect(function() {
+                        mainWindow.show()
+                        if (connection.connected) {
+                            connection.disconnectFromHost()
+                        }
+                        mainWindow.controlWindow = null
+                    })
+                    mainWindow.controlWindow.show()
+                    mainWindow.hide()
+                } else {
+                    console.error("Error loading Control.qml:", component.errorString())
+                    globalToast.show("Failed to open control screen: " + component.errorString())
+                }
+            } else if (state === ConnectionManager.Connecting) {
+                globalToast.show("Connecting to " + targetIpInput.text + "...")
+            } else if (state === ConnectionManager.Authenticating) {
+                globalToast.show("Authenticating password...")
+            } else if (state === ConnectionManager.Disconnected) {
+                if (mainWindow.controlWindow !== null) {
+                    mainWindow.controlWindow.close()
+                    mainWindow.controlWindow = null
+                }
+                mainWindow.show()
+            }
+        }
+
+        onClientConnected: {
+            mainWindow.hide()
+        }
+
+        onClientDisconnected: {
+            mainWindow.show()
+        }
+
+        onLastErrorChanged: {
+            if (lastError !== "") {
+                globalToast.show("Error: " + lastError)
+            }
+        }
+    }
+
+    ClipboardManager {
+        id: clipboard
+    }
+
+    FontLoader {
+        id: homeIconFont
+        source: "../fonts/as7.otf"
+    }
+
+    // Giao diện chính bọc trong ScrollView để hỗ trợ màn hình nhỏ
     ScrollView {
         id: homeRoot
         anchors.fill: parent
         contentWidth: availableWidth
         contentHeight: mainLayout.implicitHeight
-
-        signal connectRequested(string targetIp, string password)
-        signal refreshCredentialsRequested()
-        signal hostStateChanged(bool enabled)
-
-        // Khai báo các componet báckend
-        // Khai báo lớp mạng
-        NetworkManager {
-            id: network
-        }
-
-        // Khới tạo kết nối
-        ConnectionManager {
-            id: connection
-
-            onStateChanged: {
-                console.log("Connection State Changed:", state)
-                if (state === ConnectionManager.Connected) {
-                    var component = Qt.createComponent("Control.qml")
-                    if (component.status === Component.Ready) {
-                        mainWindow.controlWindow = component.createObject(mainWindow, { "connection": connection })
-                        mainWindow.controlWindow.closing.connect(function() {
-                            mainWindow.show()
-                            if (connection.connected) {
-                                connection.disconnectFromHost()
-                            }
-                            mainWindow.controlWindow = null
-                        })
-                        mainWindow.controlWindow.show()
-                        mainWindow.hide()
-                    } else {
-                        console.error("Error loading Control.qml:", component.errorString())
-                        globalToast.show("Failed to open control screen: " + component.errorString())
-                    }
-                } else if (state === ConnectionManager.Connecting) {
-                    globalToast.show("Connecting to " + targetIpInput.text + "...")
-                } else if (state === ConnectionManager.Authenticating) {
-                    globalToast.show("Authenticating password...")
-                } else if (state === ConnectionManager.Disconnected) {
-                    if (mainWindow.controlWindow !== null) {
-                        mainWindow.controlWindow.close()
-                        mainWindow.controlWindow = null
-                    }
-                    mainWindow.show()
-                }
-            }
-
-            onClientConnected: {
-                mainWindow.hide()
-            }
-
-            onClientDisconnected: {
-                mainWindow.show()
-            }
-
-            onLastErrorChanged: {
-                if (lastError !== "") {
-                    globalToast.show("Error: " + lastError)
-                }
-            }
-        }
-
-        // Khởi tạo clipboard:
-        ClipboardManager {
-            id: clipboard
-        }
-
-        FontLoader {
-            id: homeIconFont
-            source: "../fonts/as7.otf"
-        }
+        clip: true // Tránh các thành phần con tràn ra ngoài khi scroll
 
         ColumnLayout {
             id: mainLayout
-            anchors.fill: parent
+            width: parent.width
             anchors.margins: 32
+            // Sử dụng các neo (anchors) thủ công kết hợp Layout để tránh xung đột anchors trong ScrollView
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             spacing: 28
 
             // ================= PHẦN 1: WELCOME BANNER =================
@@ -154,7 +159,7 @@ Window {
                                 Text {
                                     font.family: homeIconFont.name
                                     text: "\uf109"
-                                    color: isHostEnabled ? "#0A84FF" : "#52525B"
+                                    color: mainWindow.isHostEnabled ? "#0A84FF" : "#52525B"
                                     font.pixelSize: 16
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
@@ -186,12 +191,9 @@ Window {
                                             connection.stopHost()
                                     }
 
-                                    // Restore binding to connection.hosting to revert checked state if startHost failed
                                     checked = Qt.binding(function() { return connection.hosting })
-
                                     mainWindow.isHostEnabled = connection.hosting
-                                    homeRoot.hostStateChanged(connection.hosting)
-
+                                    mainWindow.hostStateChanged(connection.hosting)
                                     console.log("Host:", connection.hosting)
                                 }
 
@@ -220,8 +222,8 @@ Window {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 12
-                            opacity: isHostEnabled ? 1.0 : 0.35
-                            enabled: isHostEnabled
+                            opacity: mainWindow.isHostEnabled ? 1.0 : 0.35
+                            enabled: mainWindow.isHostEnabled
                             Behavior on opacity { NumberAnimation { duration: 200 } }
 
                             ColumnLayout {
@@ -262,7 +264,6 @@ Window {
                                                 color: copyBtn.hovered ? "#0A84FF" : "#52525B"
                                                 font.pixelSize: 12
                                             }
-
                                             onClicked: clipboard.copy(id_host.text)
                                         }
                                     }
@@ -286,8 +287,8 @@ Window {
                                         anchors.rightMargin: 12
 
                                         Text {
-                                            text: isHostEnabled ? connection.password : "—"
-                                            color: isHostEnabled ? "#30D158" : "#52525B"
+                                            text: mainWindow.isHostEnabled ? connection.password : "—"
+                                            color: mainWindow.isHostEnabled ? "#30D158" : "#52525B"
                                             font.pixelSize: 14
                                             font.bold: true
                                             font.family: "Consolas"
@@ -300,7 +301,7 @@ Window {
                                             Layout.preferredHeight: 24
                                             background: Item {}
                                             onClicked: {
-                                                homeRoot.refreshCredentialsRequested()
+                                                mainWindow.refreshCredentialsRequested()
                                                 connection.generatePassword()
                                             }
                                             Text {
@@ -317,8 +318,8 @@ Window {
                         }
 
                         Text {
-                            text: isHostEnabled ? "● Status: Listening for incoming connections..." : "○ Status: Host is offline. Turn on to allow control."
-                            color: isHostEnabled ? "#30D158" : "#71717A"
+                            text: mainWindow.isHostEnabled ? "● Status: Listening for incoming connections..." : "○ Status: Host is offline. Turn on to allow control."
+                            color: mainWindow.isHostEnabled ? "#30D158" : "#71717A"
                             font.pixelSize: 11
                             font.italic: true
                             Layout.topMargin: 4
@@ -341,11 +342,9 @@ Window {
                         anchors.margins: 20
                         spacing: 16
 
-                        // Khóa tương tác toàn bộ nội dung bên trong khi bật Host
-                        // Tự động mờ đi (opacity: 0.35) khi người dùng bật chế độ Host
                         ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 12 // Giảm nhẹ spacing tổng để vừa khít layout
+                            spacing: 12
                             enabled: !mainWindow.isHostEnabled
                             opacity: mainWindow.isHostEnabled ? 0.35 : 1.0
                             Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -367,11 +366,9 @@ Window {
                                 }
                             }
 
-                            // Ô nhập ID / IP máy cần điều khiển
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
-
                                 Text { text: "Partner ID / IP Address"; color: "#71717A"; font.pixelSize: 11; font.bold: true }
 
                                 Rectangle {
@@ -399,11 +396,9 @@ Window {
                                 }
                             }
 
-                            // Ô NHẬP MẬT KHẨU MỚI THÊM
                             ColumnLayout {
                                 spacing: 4
                                 Layout.fillWidth: true
-
                                 Text { text: "Partner Password"; color: "#71717A"; font.pixelSize: 11; font.bold: true }
 
                                 Rectangle {
@@ -415,7 +410,6 @@ Window {
                                     border.color: targetPasswordInput.activeFocus ? "#0A84FF" : "transparent"
                                     border.width: 1
 
-                                    // Khai báo ở đây, ngoài TextField để binding không bị đóng băng trên Linux
                                     property bool showPassword: false
 
                                     TextField {
@@ -465,13 +459,11 @@ Window {
                                 }
                             }
 
-                            // Nút bấm kết nối
                             Button {
                                 id: connectButton
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 40
                                 Layout.topMargin: 4
-                                // Truyền cả IP và Password vào signal
                                 onClicked: {
                                     if (targetIpInput.text.trim() === "") {
                                         globalToast.show("Please enter partner IP address")
@@ -481,13 +473,12 @@ Window {
                                         globalToast.show("Please enter password")
                                         return
                                     }
-                                    homeRoot.connectRequested(targetIpInput.text, targetPasswordInput.text)
+                                    mainWindow.connectRequested(targetIpInput.text, targetPasswordInput.text)
                                     connection.connectToHost(targetIpInput.text, targetPasswordInput.text)
                                 }
 
                                 background: Rectangle {
                                     radius: 6
-                                    // Thay đổi màu nút sang xám tối khi bị tắt (Host đang bật)
                                     color: mainWindow.isHostEnabled ? "#27272A" : (connectButton.pressed ? "#0066CC" : (connectButton.hovered ? "#3399FF" : "#0A84FF"))
                                     Behavior on color { ColorAnimation { duration: 100 } }
                                 }
@@ -504,7 +495,6 @@ Window {
                                             font.pixelSize: 14
                                         }
                                         Text {
-                                            // Thay đổi nội dung text động để thông báo lý do bị khóa cho người dùng
                                             text: mainWindow.isHostEnabled ? "Disabled while Hosting" : "Connect to Partner"
                                             color: mainWindow.isHostEnabled ? "#71717A" : "#FFFFFF"
                                             font.bold: true
@@ -535,17 +525,14 @@ Window {
                         width: 8
                         height: 8
                         radius: 4
-                        // Đổi màu chấm tròn thông báo dưới thanh đáy (Xanh khi sẵn sàng kết nối, Cam/Vàng khi đang bận giữ luồng Host)
                         color: mainWindow.isHostEnabled ? "#FF9500" : "#30D158"
                         Behavior on color { ColorAnimation { duration: 200 } }
                     }
 
                     Text {
-                        // Đổi text dưới thanh trạng thái hệ thống
                         text: mainWindow.isHostEnabled ? "System is in Host Mode (Outgoing connections blocked)" : "Ready for connection (Secure Network)"
                         color: "#71717A"
                         font.pixelSize: 12
-                        Layout.fillWidth: true
                     }
                 }
             }
