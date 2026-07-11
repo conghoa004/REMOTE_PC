@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import "components"
-
 Window {
     id: mainWindow
     visible: true
@@ -29,6 +28,22 @@ Window {
     Toast {
         id: globalToast
         z: 999 // Đảm bảo luôn hiển thị trên cùng
+    }
+
+    // Khai báo System Tray Icon (C++) để điều khiển khi ẩn cửa sổ
+    SystemTray {
+        id: trayIcon
+        iconSource: "qrc:/qt/qml/LR_02/icons/tray_icon.png"
+        tooltip: "Remote PC"
+
+        onShowRequested: {
+            mainWindow.show()
+            mainWindow.raise()
+            mainWindow.requestActivate()
+        }
+        onQuitRequested: {
+            Qt.quit()
+        }
     }
 
     // Khai báo các component backend (Đặt ngoài ScrollView để quản lý tốt hơn)
@@ -73,6 +88,7 @@ Window {
 
         onClientConnected: {
             mainWindow.hide()
+            trayIcon.showMessage("Client Connected", "A client has connected to your PC. The main window is hidden for security. You can exit the app from the system tray.", 1, 5000)
         }
 
         onClientDisconnected: {

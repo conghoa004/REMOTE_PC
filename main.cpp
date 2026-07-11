@@ -1,11 +1,11 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
-
 #include <QSharedMemory>
+#include "SystemTray.h"
 
 int main(int argc, char *argv[]) {
-  QGuiApplication app(argc, argv);
+  QApplication app(argc, argv);
 
   // Ngăn chặn mở nhiều cửa sổ ứng dụng (Single instance protection)
   QSharedMemory sharedMemory("LR_02_SingleInstanceSharedMemoryKey");
