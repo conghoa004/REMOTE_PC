@@ -171,6 +171,23 @@ void RemoteClient::onPacketReceived(Packet packet)
         break;
     }
 
+    case Protocol::PacketType::AudioFrame:
+    {
+        QDataStream in(packet.payload);
+        in.setVersion(QDataStream::Qt_6_0);
+
+        quint32 sampleRate;
+        quint8 channels;
+        quint8 sampleSize;
+        quint8 sampleType;
+        QByteArray data;
+
+        in >> sampleRate >> channels >> sampleSize >> sampleType >> data;
+
+        emit audioFrameReceived(data, sampleRate, channels, sampleSize, sampleType);
+        break;
+    }
+
     default:
         break;
     }

@@ -4,9 +4,13 @@
 #include <QTcpSocket>
 #include <QImage>
 #include <qqmlintegration.h>
+#include <QAudioFormat>
 
 #include "RemoteServer.h"
 #include "RemoteClient.h"
+
+class QAudioSink;
+class QIODevice;
 
 class ConnectionManager : public QObject
 {
@@ -23,6 +27,7 @@ class ConnectionManager : public QObject
 
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
     Q_PROPERTY(bool losslessQuality READ losslessQuality WRITE setLosslessQuality NOTIFY losslessQualityChanged)
+    Q_PROPERTY(bool isMuted READ isMuted WRITE setIsMuted NOTIFY isMutedChanged)
 
 public:
     explicit ConnectionManager(QObject *parent = nullptr);
@@ -53,6 +58,9 @@ public:
     bool losslessQuality() const;
     void setLosslessQuality(bool lossless);
 
+    bool isMuted() const;
+    void setIsMuted(bool muted);
+
     Q_INVOKABLE bool startHost();
     Q_INVOKABLE void stopHost();
 
@@ -82,8 +90,12 @@ signals:
 
     void stateChanged();
     void losslessQualityChanged();
+    void isMutedChanged();
 
     void frameReceived(const QImage &image);
+
+private slots:
+    void playAudioFrame(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType);
 
 private:
     void setState(ConnectionState state);
@@ -101,4 +113,10 @@ private:
     ConnectionState m_state = ConnectionState::Disconnected;
 
     bool m_losslessQuality = false;
+    bool m_isMuted = false;
+    QAudioSink *m_audioSink = nullptr;
+    QIODevice *m_audioIoDevice = nullptr;
+    QAudioFormat m_currentAudioFormat;
+    bool m_isBuffering = true;
+    QByteArray m_audioBuffer;
 };

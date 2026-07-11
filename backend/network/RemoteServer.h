@@ -9,6 +9,7 @@
 
 #include "PacketStream.h"
 #include "Protocol.h"
+#include "AudioLoopbackCapture.h"
 
 #ifdef Q_OS_LINUX
 struct _XDisplay; // Forward declaration to avoid including X11 headers in the header
@@ -37,6 +38,7 @@ private slots:
     void onNewConnection();
     void onDisconnected();
     void captureAndBroadcast();
+    void onAudioFrameCaptured(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType);
 
 private:
     void onPacketReceived(QTcpSocket *socket, Packet packet);
@@ -76,6 +78,8 @@ private:
 
     // Previous frame for diff detection
     QImage m_previousFrame;
+
+    AudioLoopbackCapture m_audioCapture;
 
 #ifdef Q_OS_LINUX
     _XDisplay *m_display = nullptr;

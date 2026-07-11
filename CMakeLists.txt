@@ -5,7 +5,7 @@ project(LR_02 VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Tìm các gói liên quan
-find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick QuickControls2 Network QuickEffects)
+find_package(Qt6 REQUIRED COMPONENTS Gui Qml Quick QuickControls2 Network QuickEffects Multimedia)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -49,6 +49,8 @@ qt_add_qml_module(appLR_02
         backend/core/ClipboardManager.cpp
         backend/core/ScreenRenderer.h
         backend/core/ScreenRenderer.cpp
+        backend/core/AudioLoopbackCapture.h
+        backend/core/AudioLoopbackCapture.cpp
         backend/network/RemoteClient.h
         backend/network/RemoteClient.cpp
         backend/network/RemoteServer.h
@@ -78,6 +80,7 @@ target_link_libraries(appLR_02
     Qt6::QuickControls2
     Qt6::Network
     Qt6::QuickEffects
+    Qt6::Multimedia
 )
 
 if (UNIX AND NOT APPLE)

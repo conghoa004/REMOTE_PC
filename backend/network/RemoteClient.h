@@ -43,6 +43,7 @@ signals:
     void errorOccurred(QString error);
 
     void frameReceived(const QImage &image);
+    void audioFrameReceived(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType);
 
 private slots:
     void onConnected();

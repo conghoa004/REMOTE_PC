@@ -1,6 +1,9 @@
 #include "ConnectionManager.h"
 
 #include <QRandomGenerator>
+#include <QAudioSink>
+#include <QMediaDevices>
+#include <QIODevice>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -144,6 +147,11 @@ ConnectionManager::ConnectionManager(QObject *parent)
             this,
             &ConnectionManager::frameReceived);
 
+    connect(&m_client,
+            &RemoteClient::audioFrameReceived,
+            this,
+            &ConnectionManager::playAudioFrame);
+
     connect(&m_server,
             &RemoteServer::clientDisconnected,
             this,
@@ -217,6 +225,12 @@ ConnectionManager::~ConnectionManager()
         s_instance = nullptr;
     }
 #endif
+
+    if (m_audioSink) {
+        m_audioSink->stop();
+        m_audioSink->deleteLater();
+        m_audioSink = nullptr;
+    }
 }
 
 bool ConnectionManager::hosting() const
@@ -276,6 +290,16 @@ void ConnectionManager::setState(ConnectionState state)
         uninstallKeyboardHook();
     }
 #endif
+
+    if (m_state != ConnectionState::Connected)
+    {
+        if (m_audioSink) {
+            m_audioSink->stop();
+            m_audioSink->deleteLater();
+            m_audioSink = nullptr;
+            m_audioIoDevice = nullptr;
+        }
+    }
 
     emit stateChanged();
 }
@@ -395,4 +419,105 @@ void ConnectionManager::sendKeyPress(int key)
 void ConnectionManager::sendKeyRelease(int key)
 {
     m_client.sendKeyRelease(key);
+}
+
+bool ConnectionManager::isMuted() const
+{
+    return m_isMuted;
+}
+
+void ConnectionManager::setIsMuted(bool muted)
+{
+    if (m_isMuted == muted)
+        return;
+
+    m_isMuted = muted;
+    emit isMutedChanged();
+
+    if (m_audioSink) {
+        if (m_isMuted) {
+            m_audioSink->suspend();
+        } else {
+            m_audioSink->resume();
+        }
+    }
+}
+
+void ConnectionManager::playAudioFrame(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType)
+{
+    if (m_isMuted)
+        return;
+
+    QAudioFormat format;
+    format.setSampleRate(sampleRate);
+    format.setChannelCount(channels);
+    if (sampleType == 1) {
+        format.setSampleFormat(QAudioFormat::Float);
+    } else {
+        if (sampleSize == 16) {
+            format.setSampleFormat(QAudioFormat::Int16);
+        } else if (sampleSize == 32) {
+            format.setSampleFormat(QAudioFormat::Int32);
+        } else {
+            format.setSampleFormat(QAudioFormat::Int16);
+        }
+    }
+
+    if (!m_audioSink || m_currentAudioFormat != format) {
+        if (m_audioSink) {
+            m_audioSink->stop();
+            m_audioSink->deleteLater();
+            m_audioSink = nullptr;
+            m_audioIoDevice = nullptr;
+        }
+
+        m_currentAudioFormat = format;
+        m_audioSink = new QAudioSink(QMediaDevices::defaultAudioOutput(), m_currentAudioFormat, this);
+        
+        // Use a 350ms system buffer size for the audio device
+        int bytesPerSecond = sampleRate * channels * (sampleSize / 8);
+        int bufferSizeBytes = bytesPerSecond * 0.35; 
+        m_audioSink->setBufferSize(bufferSizeBytes);
+        
+        if (m_isMuted) {
+            m_audioSink->suspend();
+        }
+        
+        m_audioIoDevice = m_audioSink->start();
+        m_isBuffering = true;
+        m_audioBuffer.clear();
+    }
+
+    // Trigger pre-buffering if the sink runs out of data (IdleState) to absorb network gaps
+    if (m_audioSink && m_audioSink->state() == QAudio::IdleState) {
+        if (!m_isBuffering) {
+            m_isBuffering = true;
+            m_audioBuffer.clear();
+        }
+    }
+
+    if (m_isBuffering) {
+        m_audioBuffer.append(data);
+        
+        int bytesPerSecond = sampleRate * channels * (sampleSize / 8);
+        int prebufferThreshold = bytesPerSecond * 0.25; // Pre-buffer 250ms of audio before starting play
+        
+        if (m_audioBuffer.size() >= prebufferThreshold) {
+            m_isBuffering = false;
+            if (m_audioIoDevice && m_audioIoDevice->isOpen()) {
+                m_audioIoDevice->write(m_audioBuffer);
+            }
+            m_audioBuffer.clear();
+        }
+    } else {
+        if (m_audioIoDevice && m_audioIoDevice->isOpen()) {
+            m_audioIoDevice->write(data);
+            
+            if (m_audioSink && m_audioSink->state() == QAudio::StoppedState) {
+                if (m_audioSink->error() != QAudio::NoError) {
+                    qWarning() << "ConnectionManager: QAudioSink StoppedState due to error:" << m_audioSink->error();
+                }
+            }
+        }
+    }
 }

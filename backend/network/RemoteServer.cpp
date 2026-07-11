@@ -158,6 +158,11 @@ RemoteServer::RemoteServer(QObject *parent)
             this,
             &RemoteServer::captureAndBroadcast);
 
+    connect(&m_audioCapture,
+            &AudioLoopbackCapture::audioFrameCaptured,
+            this,
+            &RemoteServer::onAudioFrameCaptured);
+
 #ifdef Q_OS_LINUX
     m_display = XOpenDisplay(nullptr);
 #endif
@@ -184,6 +189,7 @@ bool RemoteServer::start(quint16 port)
 void RemoteServer::stop()
 {
     m_captureTimer.stop();
+    m_audioCapture.stopCapture();
 
     for (QTcpSocket *socket : m_clients)
     {
@@ -273,6 +279,7 @@ void RemoteServer::onDisconnected()
     if (!hasAuthenticated) {
         m_captureTimer.stop();
         m_previousFrame = QImage();
+        m_audioCapture.stopCapture();
     }
 }
 
@@ -300,6 +307,10 @@ void RemoteServer::onPacketReceived(QTcpSocket *socket, Packet packet)
             if (!m_captureTimer.isActive()) {
                 m_previousFrame = QImage();
                 m_captureTimer.start(60); // ~16 FPS
+            }
+
+            if (!m_audioCapture.isRunning()) {
+                m_audioCapture.start();
             }
         }
         else
@@ -724,3 +735,23 @@ void RemoteServer::simulateKeyRelease(int qtKey)
 }
 
 #endif // Q_OS_LINUX
+
+void RemoteServer::onAudioFrameCaptured(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType)
+{
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << static_cast<quint32>(sampleRate)
+        << static_cast<quint8>(channels)
+        << static_cast<quint8>(sampleSize)
+        << static_cast<quint8>(sampleType)
+        << data;
+
+    for (QTcpSocket *socket : m_clients)
+    {
+        if (m_authenticated.value(socket, false))
+        {
+            m_streams[socket]->send(Protocol::PacketType::AudioFrame, payload);
+        }
+    }
+}

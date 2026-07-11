@@ -140,8 +140,15 @@ ApplicationWindow {
                 Button {
                     id: muteButton
                     checkable: true
+                    checked: connection ? connection.isMuted : false
                     Layout.preferredWidth: 115
                     Layout.preferredHeight: 36
+
+                    onClicked: {
+                        if (connection) {
+                            connection.isMuted = checked
+                        }
+                    }
 
                     contentItem: RowLayout {
                         spacing: 8
