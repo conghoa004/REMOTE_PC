@@ -44,7 +44,7 @@ Window {
             if (state === ConnectionManager.Connected) {
                 var component = Qt.createComponent("Control.qml")
                 if (component.status === Component.Ready) {
-                    mainWindow.controlWindow = component.createObject(mainWindow, { "connection": connection })
+                    mainWindow.controlWindow = component.createObject(null, { "connection": connection })
                     mainWindow.controlWindow.closing.connect(function() {
                         mainWindow.show()
                         if (connection.connected) {
