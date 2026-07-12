@@ -398,16 +398,25 @@ Window {
 
                                     TextField {
                                         id: targetIpInput
+
                                         anchors.fill: parent
                                         anchors.leftMargin: 12
                                         anchors.rightMargin: 12
+
                                         placeholderText: "e.g. 192.168.1.100"
                                         placeholderTextColor: "#52525B"
+
                                         color: "#FFFFFF"
                                         font.pixelSize: 14
                                         font.family: "Consolas"
+
                                         verticalAlignment: TextInput.AlignVCenter
                                         background: Item {}
+
+                                        // Chỉ cho nhập số và dấu chấm
+                                        validator: RegularExpressionValidator {
+                                            regularExpression: /[0-9.]*/
+                                        }
                                     }
                                 }
                             }
@@ -430,20 +439,34 @@ Window {
 
                                     TextField {
                                         id: targetPasswordInput
+
                                         anchors.left: parent.left
                                         anchors.right: eyeButton.left
                                         anchors.top: parent.top
                                         anchors.bottom: parent.bottom
                                         anchors.leftMargin: 12
                                         anchors.rightMargin: 8
+
                                         placeholderText: "Enter password"
                                         placeholderTextColor: "#52525B"
+
                                         color: "#FFFFFF"
                                         font.pixelSize: 14
                                         font.family: "Consolas"
-                                        echoMode: passwordInputWrapper.showPassword ? TextInput.Normal : TextInput.Password
+
+                                        echoMode: passwordInputWrapper.showPassword ? TextInput.Normal
+                                                                                    : TextInput.Password
+
                                         verticalAlignment: TextInput.AlignVCenter
                                         background: Item {}
+
+                                        // Chỉ cho nhập số
+                                        validator: IntValidator {
+                                            bottom: 0
+                                        }
+
+                                        // Hoặc giới hạn số lượng ký tự
+                                        maximumLength: 6
                                     }
 
                                     Rectangle {
