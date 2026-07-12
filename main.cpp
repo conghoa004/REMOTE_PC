@@ -5,6 +5,13 @@
 #include "SystemTray.h"
 
 int main(int argc, char *argv[]) {
+
+// Linux: Chuyển Qt sang sử dụng XIM thay cho IBus/Fcitx nhằm giảm
+// các lỗi liên quan đến bộ gõ tiếng Việt (IME) khi nhập liệu.
+#ifdef Q_OS_LINUX
+    qputenv("QT_IM_MODULE", "xim");
+#endif
+
   QApplication app(argc, argv);
 
   // Ngăn chặn mở nhiều cửa sổ ứng dụng (Single instance protection)
