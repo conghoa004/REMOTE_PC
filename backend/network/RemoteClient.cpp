@@ -2,6 +2,8 @@
 
 #include <QBuffer>
 #include <QDataStream>
+#include <QClipboard>
+#include <QGuiApplication>
 
 RemoteClient::RemoteClient(QObject *parent)
     : QObject(parent)
@@ -23,6 +25,11 @@ RemoteClient::RemoteClient(QObject *parent)
             {
                 emit errorOccurred(m_socket.errorString());
             });
+
+    connect(QGuiApplication::clipboard(),
+            &QClipboard::dataChanged,
+            this,
+            &RemoteClient::onClipboardChanged);
 
     m_mouseThrottleTimer.setInterval(12); // ~80 Hz limit for mouse moves
     connect(&m_mouseThrottleTimer, &QTimer::timeout, this, &RemoteClient::sendPendingMouseMove);
@@ -188,6 +195,18 @@ void RemoteClient::onPacketReceived(Packet packet)
         break;
     }
 
+    case Protocol::PacketType::Clipboard:
+    {
+        QDataStream in(packet.payload);
+        in.setVersion(QDataStream::Qt_6_0);
+        QString text;
+        in >> text;
+
+        m_lastIncomingClipboard = text;
+        QGuiApplication::clipboard()->setText(text);
+        break;
+    }
+
     default:
         break;
     }
@@ -289,4 +308,24 @@ void RemoteClient::sendPendingMouseMove()
     out << static_cast<qint32>(m_pendingMouseMove.x()) << static_cast<qint32>(m_pendingMouseMove.y());
 
     m_stream->send(Protocol::PacketType::MouseMove, payload);
+}
+
+void RemoteClient::onClipboardChanged()
+{
+    if (!isConnected() || !m_stream)
+        return;
+
+    QString text = QGuiApplication::clipboard()->text();
+    if (text.isEmpty())
+        return;
+
+    if (text == m_lastIncomingClipboard)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << text;
+
+    m_stream->send(Protocol::PacketType::Clipboard, payload);
 }

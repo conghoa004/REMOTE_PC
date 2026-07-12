@@ -52,6 +52,7 @@ private slots:
 private:
     void sendAuthentication();
     void sendSettingsUpdate();
+    void onClipboardChanged();
     void onPacketReceived(Packet packet);
     void sendPendingMouseMove();
 
@@ -65,4 +66,6 @@ private:
     QTimer m_mouseThrottleTimer;
     QPoint m_pendingMouseMove;
     bool m_hasPendingMouseMove = false;
+
+    QString m_lastIncomingClipboard;
 };

@@ -39,6 +39,7 @@ private slots:
     void onDisconnected();
     void captureAndBroadcast();
     void onAudioFrameCaptured(const QByteArray &data, int sampleRate, int channels, int sampleSize, int sampleType);
+    void onClipboardChanged();
 
 private:
     void onPacketReceived(QTcpSocket *socket, Packet packet);
@@ -80,6 +81,7 @@ private:
     QImage m_previousFrame;
 
     AudioLoopbackCapture m_audioCapture;
+    QString m_lastIncomingClipboard;
 
 #ifdef Q_OS_LINUX
     _XDisplay *m_display = nullptr;

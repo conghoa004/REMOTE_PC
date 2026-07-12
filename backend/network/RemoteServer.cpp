@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QBuffer>
 #include <QDataStream>
+#include <QClipboard>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -162,6 +163,11 @@ RemoteServer::RemoteServer(QObject *parent)
             &AudioLoopbackCapture::audioFrameCaptured,
             this,
             &RemoteServer::onAudioFrameCaptured);
+
+    connect(QGuiApplication::clipboard(),
+            &QClipboard::dataChanged,
+            this,
+            &RemoteServer::onClipboardChanged);
 
 #ifdef Q_OS_LINUX
     m_display = XOpenDisplay(nullptr);
@@ -429,6 +435,29 @@ void RemoteServer::onPacketReceived(QTcpSocket *socket, Packet packet)
         in >> key;
 
         simulateKeyRelease(key);
+        break;
+    }
+
+    case Protocol::PacketType::Clipboard:
+    {
+        if (!m_authenticated.value(socket, false))
+            break;
+
+        QDataStream in(packet.payload);
+        in.setVersion(QDataStream::Qt_6_0);
+
+        QString text;
+        in >> text;
+
+        m_lastIncomingClipboard = text;
+        QGuiApplication::clipboard()->setText(text);
+
+        // Broadcast to all other authenticated clients
+        for (QTcpSocket *clientSocket : m_clients) {
+            if (clientSocket != socket && m_authenticated.value(clientSocket, false)) {
+                m_streams[clientSocket]->send(Protocol::PacketType::Clipboard, packet.payload);
+            }
+        }
         break;
     }
 
@@ -752,6 +781,30 @@ void RemoteServer::onAudioFrameCaptured(const QByteArray &data, int sampleRate, 
         if (m_authenticated.value(socket, false))
         {
             m_streams[socket]->send(Protocol::PacketType::AudioFrame, payload);
+        }
+    }
+}
+
+void RemoteServer::onClipboardChanged()
+{
+    if (m_clients.isEmpty())
+        return;
+
+    QString text = QGuiApplication::clipboard()->text();
+    if (text.isEmpty())
+        return;
+
+    if (text == m_lastIncomingClipboard)
+        return;
+
+    QByteArray payload;
+    QDataStream out(&payload, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_6_0);
+    out << text;
+
+    for (QTcpSocket *socket : m_clients) {
+        if (m_authenticated.value(socket, false)) {
+            m_streams[socket]->send(Protocol::PacketType::Clipboard, payload);
         }
     }
 }
