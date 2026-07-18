@@ -1,4 +1,4 @@
-# Remote Desktop Connection (LR_02)
+# Remote Desktop Connection
 
 A cross-platform, high-performance, and modern Remote Desktop application built using **C++**, **Qt6 (QML)**, and **CMake**.
 
