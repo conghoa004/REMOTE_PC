@@ -35,6 +35,21 @@ The application supports real-time screen streaming, system audio loopback captu
 
 ---
 
+## 📷 Screenshots
+
+### 1. Startup & Mode Configuration
+* **Connection Dashboard (Host Offline & Client Input):**
+  ![Connection Dashboard](results/connect_page.png)
+
+* **Host Mode Activated (Awaiting Client Connections):**
+  ![Host Active](results/host_page.png)
+
+### 2. Active Session
+* **Remote Desktop Control Interface (Screen streaming, audio loopback, and input control):**
+  ![Control Session](results/control_page.png)
+
+---
+
 ## 📁 Project Directory Structure
 
 ```text
