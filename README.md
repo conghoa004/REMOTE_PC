@@ -71,7 +71,7 @@ The application supports real-time screen streaming, system audio loopback captu
 ## 🛠️ Requirements & Build Guide
 
 ### 1. Requirements
-* **Qt6 SDK** (Qt 6.10 or higher recommended). Required modules:
+* **Qt6 SDK** (Qt 6.10 or higher recommended, which can be downloaded from [Qt Official Open Source Download Page](https://www.qt.io/development/download-qt-installer-oss)). Required modules:
   * `Gui`, `Qml`, `Quick`, `QuickControls2`, `Network`, `QuickEffects`, `Multimedia`, `Widgets`.
 * **C++ Compiler** supporting standard C++17 or higher.
 * **CMake** version 3.16 or higher.
