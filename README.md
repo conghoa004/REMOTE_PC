@@ -1,136 +1,291 @@
-# Remote Desktop Connection
+<p align="center">
+  <img src="icons/tray_icon.png" alt="Remote Desktop Logo" width="80" />
+</p>
 
-A cross-platform, high-performance, and modern Remote Desktop application built using **C++**, **Qt6 (QML)**, and **CMake**.
+<h1 align="center">Remote Desktop Connection</h1>
 
-The application supports real-time screen streaming, system audio loopback capture, clipboard synchronization, and mouse/keyboard input simulation on both **Windows** and **Linux (X11)**.
+<p align="center">
+  <strong>A cross-platform, high-performance remote desktop application for real-time screen sharing, audio streaming, and full input control over LAN.</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-17-blue?logo=cplusplus&logoColor=white" alt="C++17" />
+  <img src="https://img.shields.io/badge/Qt-6.10+-41CD52?logo=qt&logoColor=white" alt="Qt6" />
+  <img src="https://img.shields.io/badge/CMake-3.16+-064F8C?logo=cmake&logoColor=white" alt="CMake" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20|%20Linux-lightgrey?logo=windows&logoColor=white" alt="Platform" />
+</p>
+
+<p align="center">
+  <a href="README.md">en English</a> · <a href="README_VI.md">🇻🇳 Tiếng Việt</a>
+</p>
 
 ---
 
-## 🌟 Key Features
+## 📖 Overview
 
-### 1. Screen Capturing & Streaming
-* **Low Latency:** Detects frame differences using fast binary memory comparison (`memcmp`) of raw pixel data to only transmit updated regions of the screen, minimizing network bandwidth and CPU usage.
-* **Flexible Image Quality:**
-  * **Optimized (Default):** Compresses frames as JPEG with 90% quality, balancing display clarity and network consumption.
-  * **Lossless:** Converts frames to RGB32 format and compresses them using Zlib (compression level 1 - fastest) to deliver pixel-perfect clarity.
+**Remote Desktop Connection** is a lightweight, native remote desktop tool built with **C++**, **Qt6 (QML)**, and **CMake**. It enables secure, low-latency control of remote computers within a local area network (LAN).
 
-### 2. System Audio Loopback Capture
-* **Windows (WASAPI):** Uses the WASAPI Loopback API (`AUDCLNT_STREAMFLAGS_LOOPBACK`) to record system audio directly from the default output device. It automatically converts 32-bit Float PCM to 16-bit Int PCM to reduce bandwidth and ensure cross-platform playback compatibility.
-* **Linux (PulseAudio / parec):** Captures audio from the default monitor sink using the `parec` tool, with a fallback to `QAudioSource` querying `monitor` or `loopback` devices.
-* **Real-time Playback:** Synchronizes audio streams directly to the client using `QAudioSink`, with support for Mute/Unmute controls.
+### What it does
 
-### 3. Mouse and Keyboard Input Simulation
-* **Precise Coordinate Mapping:** The client leverages the `ScreenRenderer` component to accurately map local QML window coordinates to the host's native screen resolution.
-* **Windows Simulation:** Utilizes the Win32 `SendInput` API to simulate mouse actions (movement, left/right/middle click, wheel scroll) and keyboard presses/releases.
-* **Linux Simulation:** Utilizes X11 system libraries and the **XTest** extension (`XTestFakeMotionEvent`, `XTestFakeButtonEvent`, `XTestFakeKeyEvent`).
-
-### 4. Clipboard Synchronization
-* Dual-way real-time text synchronization between host and client clipboards during an active remote session.
-
-### 5. Security & User Experience
-* **One-time Passcode:** Generates a random 6-digit connection PIN on the host to authenticate incoming client connections.
-* **Single Instance Protection:** Uses `QSharedMemory` to ensure only one instance of the application runs on the system at any given time.
-* **System Tray Minimization:** For safety, the host window automatically hides to the system tray when a client connects. Users can interact with or shut down the application via the system tray context menu.
-* **Modern Dark Theme:** Designed with a premium dark-themed interface (Slate 900 / Navy Blue), integrating FontAwesome (`as7.otf`) for crisp icon rendering, smooth micro-animations, and clean toast notifications.
+| Capability               | Description                                                                                      |
+| :------------------------ | :----------------------------------------------------------------------------------------------- |
+| 🖥️ **Screen Streaming**  | Real-time screen capture with frame-diff detection and dual compression modes (JPEG / Zlib)       |
+| 🔊 **Audio Loopback**    | System audio capture & playback via WASAPI (Windows) or PulseAudio (Linux)                        |
+| 🖱️ **Input Simulation**  | Full mouse & keyboard relay through Win32 `SendInput` or X11 XTest extension                      |
+| 📋 **Clipboard Sync**    | Bidirectional real-time text clipboard synchronization                                            |
+| 🔐 **Authentication**    | One-time 6-digit passcode generated per host session                                              |
 
 ---
 
 ## 📷 Screenshots
 
-### 1. Startup & Mode Configuration
-* **Connection Dashboard (Host Offline & Client Input):**
-  ![Connection Dashboard](results/connect_page.png)
+### Connection Dashboard
+*Host offline — ready to start hosting or connect to a partner.*
 
-* **Host Mode Activated (Awaiting Client Connections):**
-  ![Host Active](results/host_page.png)
+![Connection Dashboard](results/connect_page.png)
 
-### 2. Active Session
-* **Remote Desktop Control Interface (Screen streaming, audio loopback, and input control):**
-  ![Control Session](results/control_page.png)
+### Host Mode Active
+*Listening for incoming client connections with auto-generated passcode.*
+
+![Host Active](results/host_page.png)
+
+### Remote Control Session
+*Live screen streaming with audio, input control, and quality toggle.*
+
+![Control Session](results/control_page.png)
 
 ---
 
-## 📁 Project Directory Structure
+## ✨ Features in Detail
 
-```text
-├── backend/
-│   ├── core/                        # Core system logic modules
-│   │   ├── AudioLoopbackCapture.h/cpp # System audio capture (WASAPI/parec)
-│   │   ├── ClipboardManager.h/cpp   # Clipboard synchronization and management
-│   │   ├── ConnectionManager.h/cpp  # State management and network connection controller
-│   │   ├── NetworkManager.h/cpp     # Local IP address retrieval
-│   │   ├── ScreenRenderer.h/cpp     # Renders incoming screen frames onto QML Canvas
-│   │   └── SystemTray.h/cpp         # Manages system tray icons and notifications
-│   └── network/                     # Network socket communication layer
-│       ├── Packet.h/cpp             # Defines network packet structures
-│       ├── PacketStream.h/cpp       # Handles serialization/deserialization of TCP packet streams
-│       ├── Protocol.h               # Defines network packet types and compression schemas
-│       ├── RemoteClient.h/cpp       # Handles client-side remote connection logic
-│       └── RemoteServer.h/cpp       # Handles server-side hosting and input simulation
-├── fonts/
-│   └── as7.otf                      # Font containing FontAwesome icons
-├── icons/
-│   └── tray_icon.png                # System tray icon
-├── importedcontent/                 # Directory for auto-generated UI assets (if any)
-├── qml/                             # QML-based frontend user interface
-│   ├── components/
-│   │   └── Toast.qml                # Small popup toast notification component
-│   ├── Control.qml                  # Client window for displaying and controlling the remote desktop
-│   └── Home.qml                     # Main startup window to choose Host or Client mode
-├── CMakeLists.txt                   # CMake build configuration
-└── main.cpp                         # Application entry point
+### Screen Capturing & Streaming
+
+- **Frame-diff detection** — Uses fast binary memory comparison (`memcmp`) on raw pixel data; only changed frames are transmitted, drastically reducing bandwidth.
+- **Dual compression modes:**
+  - **Optimized (default):** JPEG at 90% quality — excellent balance of clarity and bandwidth.
+  - **Lossless:** RGB32 → Zlib (level 1, fastest) — pixel-perfect fidelity when needed.
+- **Client-side toggle** — Switch between modes on-the-fly during an active session.
+
+### System Audio Loopback
+
+| Platform | Technology | Details |
+| :------- | :--------- | :------ |
+| **Windows** | WASAPI Loopback | Captures from the default output device via `AUDCLNT_STREAMFLAGS_LOOPBACK`. Auto-converts Float32 PCM → Int16 PCM. |
+| **Linux** | PulseAudio (`parec`) | Captures from the default monitor sink. Falls back to `QAudioSource` querying `monitor` / `loopback` devices. |
+
+- Real-time playback on the client via `QAudioSink` with buffering.
+- Mute / Unmute toggle available in the control UI.
+
+### Mouse & Keyboard Simulation
+
+- **Coordinate mapping** — `ScreenRenderer` accurately maps QML window coordinates → host's native screen resolution.
+- **Windows:** Win32 `SendInput` API — supports move, left/right/middle click, scroll wheel, key press/release.
+- **Linux:** X11 XTest extension — `XTestFakeMotionEvent`, `XTestFakeButtonEvent`, `XTestFakeKeyEvent`.
+- **Mouse throttling** — Outgoing mouse move events are throttled via `QTimer` to prevent network flooding.
+
+### Clipboard Synchronization
+
+- Bidirectional, real-time text sync between host and client.
+- Duplicate detection prevents infinite clipboard echo loops.
+
+### Security & UX
+
+- **One-time passcode** — Random 6-digit PIN generated per host session.
+- **Single instance protection** — `QSharedMemory` ensures only one app instance runs at a time.
+- **System tray minimization** — Host window auto-hides to tray on client connect; restored via tray context menu.
+- **Modern dark theme** — Premium Slate 900 / Navy Blue UI with FontAwesome icons, smooth animations, and toast notifications.
+
+---
+
+## 🏗️ Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                       QML Frontend                       │
+│  Home.qml (Dashboard)  ·  Control.qml (Remote Session)  │
+│                     Toast.qml (Popups)                   │
+└───────────────────────────┬──────────────────────────────┘
+                            │ Q_INVOKABLE / Q_PROPERTY
+┌───────────────────────────▼──────────────────────────────┐
+│                    Core Layer (C++)                       │
+│  ConnectionManager  ·  ScreenRenderer  ·  SystemTray     │
+│  ClipboardManager   ·  AudioLoopbackCapture              │
+│  NetworkManager                                          │
+└───────────────────────────┬──────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────┐
+│                   Network Layer (TCP)                     │
+│  RemoteServer ←→ PacketStream ←→ RemoteClient            │
+│               Packet · Protocol                          │
+│  Port: 5000  ·  Magic: 0x52444B54 ("RDKT")              │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Protocol Packet Types
+
+```
+Authentication:  AuthRequest → AuthSuccess / AuthFailed
+Screen:          ScreenFrame (JPEG or Zlib compressed)
+Input:           MouseMove · MousePress · MouseRelease · MouseWheel
+                 KeyPress · KeyRelease
+Clipboard:       Clipboard (text payload)
+Audio:           AudioFrame (Int16 PCM samples)
+Health:          Ping ↔ Pong
+Settings:        SettingsUpdate (compression mode toggle)
 ```
 
 ---
 
-## 🛠️ Requirements & Build Guide
+## 📁 Project Structure
 
-### 1. Requirements
-* **Qt6 SDK** (Qt 6.10 or higher recommended, which can be downloaded from [Qt Official Open Source Download Page](https://www.qt.io/development/download-qt-installer-oss)). Required modules:
-  * `Gui`, `Qml`, `Quick`, `QuickControls2`, `Network`, `QuickEffects`, `Multimedia`, `Widgets`.
-* **C++ Compiler** supporting standard C++17 or higher.
-* **CMake** version 3.16 or higher.
-* **Operating Systems:**
-  * **Windows:** Standard build with Win32 APIs (COM, WASAPI).
-  * **Linux:** Requires X11 development headers (`libX11`, `libXtst`) and PulseAudio utility tools (`pactl` and `parec` for loopback capture).
-    * Install on Ubuntu/Debian:
-      ```bash
-      sudo apt-get install libx11-dev libxtst-dev pulseaudio-utils
-      ```
+```text
+REMOTE_PC/
+├── main.cpp                             # Application entry point
+├── CMakeLists.txt                       # CMake build configuration
+│
+├── backend/
+│   ├── core/                            # Core system modules
+│   │   ├── ConnectionManager.h/cpp      # Central state machine & QML bridge
+│   │   ├── ScreenRenderer.h/cpp         # Renders incoming frames onto QML canvas
+│   │   ├── AudioLoopbackCapture.h/cpp   # System audio capture (WASAPI / parec)
+│   │   ├── ClipboardManager.h/cpp       # Bidirectional clipboard sync
+│   │   ├── NetworkManager.h/cpp         # Local IP address discovery
+│   │   └── SystemTray.h/cpp             # Tray icon, notifications & context menu
+│   │
+│   └── network/                         # TCP communication layer
+│       ├── Protocol.h                   # Packet types, magic number, compression enum
+│       ├── Packet.h/cpp                 # Packet data structure
+│       ├── PacketStream.h/cpp           # Serialization / deserialization of TCP streams
+│       ├── RemoteServer.h/cpp           # Host-side: capture, broadcast, input simulation
+│       └── RemoteClient.h/cpp           # Client-side: connect, render, relay input
+│
+├── qml/                                 # QML frontend
+│   ├── Home.qml                         # Main dashboard (Host / Client mode selection)
+│   ├── Control.qml                      # Remote session window (display + controls)
+│   └── components/
+│       └── Toast.qml                    # Toast notification component
+│
+├── fonts/
+│   └── as7.otf                          # FontAwesome 7 icon font
+│
+├── icons/
+│   └── tray_icon.png                    # System tray icon
+│
+└── results/                             # Screenshots for documentation
+    ├── connect_page.png
+    ├── host_page.png
+    └── control_page.png
+```
 
-### 2. Build Steps (CMake)
+---
 
-Open a terminal in the root directory of the project and execute the following commands:
+## 🛠️ Requirements
+
+### Dependencies
+
+| Dependency | Version | Notes |
+| :--------- | :------ | :---- |
+| **Qt6 SDK** | 6.10+ | Modules: `Gui`, `Qml`, `Quick`, `QuickControls2`, `Network`, `QuickEffects`, `Multimedia`, `Widgets` |
+| **C++ Compiler** | C++17+ | MSVC, GCC, or Clang |
+| **CMake** | 3.16+ | Build system |
+
+> **Download Qt:** [Qt Open Source Installer](https://www.qt.io/development/download-qt-installer-oss)
+
+### Platform-Specific
+
+<details>
+<summary><strong>🪟 Windows</strong></summary>
+
+No additional dependencies. The application uses built-in Win32 APIs:
+- **COM / WASAPI** for audio loopback capture
+- **SendInput** for input simulation
+
+</details>
+
+<details>
+<summary><strong>🐧 Linux (X11)</strong></summary>
+
+Install X11 and PulseAudio development packages:
 
 ```bash
-# Configure the build directory
+# Ubuntu / Debian
+sudo apt-get install libx11-dev libxtst-dev pulseaudio-utils
+
+# Fedora
+sudo dnf install libX11-devel libXtst-devel pulseaudio-utils
+
+# Arch Linux
+sudo pacman -S libx11 libxtst pulseaudio
+```
+
+</details>
+
+---
+
+## 🚀 Build & Run
+
+### Build with CMake
+
+```bash
+# Configure
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
-# Build the application
+# Build
 cmake --build build --config Release
 ```
 
-After building:
-* **Windows:** The executable file `appLR_02.exe` will be located under the `build` folder.
-* **Linux:** The executable file `appLR_02` will be located under the `build` folder.
+### Run
+
+```bash
+# Windows
+.\build\Release\appLR_02.exe
+
+# Linux
+./build/appLR_02
+```
+
+> **Tip:** You can also open the project directly in **Qt Creator** by loading `CMakeLists.txt`.
 
 ---
 
-## 💡 How to Use
+## 💡 Usage Guide
 
-1. **Host (Allow Remote Control):**
-   * Run the application and toggle the switch on the right side of the **This Computer (Host)** panel.
-   * Your local IP address and a **one-time 6-digit passcode** will be generated and displayed.
-   * Share the IP and Passcode with the client who wants to connect to your computer.
-   * Once a connection is established, the application window will automatically hide to the system tray for safety.
+### 1. Host — Allow Remote Control
 
-2. **Client (Control a Remote PC):**
-   * Run the application and focus on the **Control Remote Computer** panel.
-   * Enter the **Partner IP Address** and **Partner Passcode** of the host.
-   * Click **Connect to Partner**.
-   * The remote desktop window will open, allowing you to use your mouse and keyboard to control the remote PC, toggle image quality between Optimized and Lossless, Mute/Unmute audio, or stop the session via the **Disconnect** button.
+1. Launch the application.
+2. In the **This Computer (Host)** panel, toggle the switch to **ON**.
+3. Your **local IP address** and a **6-digit passcode** will appear.
+4. Share these credentials with the person who needs to connect.
+5. Once a client connects, the window auto-hides to the **system tray**.
+6. Right-click the tray icon to restore the window or shut down.
+
+### 2. Client — Control a Remote PC
+
+1. Launch the application.
+2. In the **Control Remote Computer** panel, enter the host's **IP address** and **passcode**.
+3. Click **Connect to Partner**.
+4. The remote desktop window opens with the following controls:
+
+| Control | Action |
+| :------ | :----- |
+| **Mouse & Keyboard** | Interact naturally — all input is relayed to the host |
+| **Quality Toggle** | Switch between *Optimized* (JPEG) and *Lossless* (Zlib) |
+| **Audio Toggle** | Mute / Unmute the host's system audio stream |
+| **Disconnect** | End the remote session cleanly |
 
 ---
 
-## 🛡️ License & Contributions
-This project is designed for secure, low-latency remote computer control in local area networks (LAN). Feel free to submit pull requests or raise issues for enhancements and bug fixes.
+## 🔧 Configuration
+
+| Parameter | Default | Location |
+| :-------- | :------ | :------- |
+| TCP Port | `5000` | `Protocol.h` → `DefaultPort` |
+| JPEG Quality | `90%` | `RemoteServer.cpp` |
+| Zlib Compression Level | `1` (fastest) | `RemoteServer.cpp` |
+| Capture Interval | Timer-based | `RemoteServer` → `m_captureTimer` |
+
+---
+
+## 🛡️ License & Contributing
+
+This project is designed for **secure, low-latency remote control over LAN**. Contributions are welcome — feel free to submit pull requests or open issues for enhancements and bug fixes.
